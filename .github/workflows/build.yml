@@ -26,28 +26,29 @@ jobs:
         run: |
           mkdir -p project
           ZIP=$(find . -maxdepth 1 -iname '*.zip' | head -n 1)
-          if [ -z "$ZIP" ]; then
-            echo "ERROR: No se encontró el ZIP"
-            exit 1
-          fi
           unzip -q "$ZIP" -d project
 
-      - name: Locate Gradle Wrapper
-        id: locate
+      - name: Inspect ZIP structure
+        run: |
+          echo "=== ARCHIVOS GRADLE ==="
+          find project -type f \( -name gradlew -o -name gradle-wrapper.jar -o -name build.gradle -o -name build.gradle.kts \)
+          echo "=== DIRECTORIOS ==="
+          find project -maxdepth 4 -type d | head -n 100
+
+      - name: Locate and build project
         run: |
           WRAPPER=$(find project -type f -name gradlew | head -n 1)
+
           if [ -z "$WRAPPER" ]; then
-            echo "ERROR: No se encontró gradlew"
-            find project -maxdepth 3 -type f | head -n 100
+            echo "ERROR: No se encontró gradlew en el ZIP."
             exit 1
           fi
-          echo "dir=$(dirname "$WRAPPER")" >> "$GITHUB_OUTPUT"
 
-      - name: Build KzClient
-        working-directory: project
-        run: |
-          chmod +x "${{ steps.locate.outputs.dir }}/gradlew"
-          cd "${{ steps.locate.outputs.dir }}"
+          PROJECT_DIR=$(dirname "$WRAPPER")
+          echo "Proyecto encontrado en: $PROJECT_DIR"
+
+          chmod +x "$WRAPPER"
+          cd "$PROJECT_DIR"
           ./gradlew clean build --no-daemon
 
       - name: Upload JAR
